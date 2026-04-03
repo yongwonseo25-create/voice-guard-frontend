@@ -1,0 +1,5 @@
+{
+  "name": "보이스가드",
+  "description": "A simple, highly legible voice recording app for work logs and messaging, designed for seniors.",
+  "requestFramePermissions": ["microphone"]
+}
