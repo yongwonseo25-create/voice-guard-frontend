@@ -103,7 +103,7 @@ export const apiService = {
 
   connectDashboardSSE(onMessage?: (data: any) => void, onError?: (err: any) => void): EventSource {
     const token = getAuthToken();
-    const url = `${API_BASE_URL}/api/dashboard/sse?token=${token || ''}`;
+    const url = `${API_BASE_URL}/api/sse/stream`;
     
     const eventSource = new EventSource(url);
 
