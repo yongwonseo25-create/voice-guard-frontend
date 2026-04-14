@@ -4,8 +4,9 @@
  */
 
 import { getDeviceId } from './deviceId';
+import { API_BASE_URL, IS_DEV_MOCK } from './config';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const mockDelay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 // ── 사령관 특별 지시 룰: 카카오 v7 골든타임 TTL ──────────────────
 // 긴급(원장님) = 20초 한계 / 일반(동료) = 60초 한계
@@ -141,21 +142,14 @@ const handleResponse = async (response: Response): Promise<IdempotentResponse> =
   return data;
 };
 
-// ── 🔧 DEV MOCK MODE ─────────────────────────────────────────────
-// 🔒 Mock 강제 활성화 — 백엔드(Gemini/Notion) 물리적 단절 상태.
-// 실서비스 전환 시: const DEV_MOCK = !API_BASE_URL; 로 복원.
-const DEV_MOCK = true;
-
-const mockDelay = (ms: number) =>
-  new Promise<void>((r) => setTimeout(r, ms));
 
 export const apiService = {
   /**
    * 타격 4: 녹음 종료 후 1500ms 고정 — 사령관 "2초 미만" 룰 준수.
-   * DEV_MOCK=true 시 네트워크 요청 0건, 순수 setTimeout만 동작.
+   * IS_DEV_MOCK=true 시 네트워크 요청 0건, 순수 setTimeout만 동작.
    */
   async transcribeAudio(_audioData?: Blob): Promise<IdempotentResponse> {
-    if (DEV_MOCK) {
+    if (IS_DEV_MOCK) {
       await mockDelay(1500); // 🔒 1500ms 고정 — 절대 변경 금지
       return {
         idempotencyKey: 'mock-transcribe-' + Date.now(),
@@ -178,7 +172,7 @@ export const apiService = {
   },
 
   async saveLog(text: string): Promise<IdempotentResponse> {
-    if (DEV_MOCK) {
+    if (IS_DEV_MOCK) {
       await mockDelay(300);
       return { idempotencyKey: 'mock-log-' + Date.now(), success: true };
     }
@@ -200,7 +194,7 @@ export const apiService = {
    * 골든타임 룰: 20초 데드라인, 초과 시 NotifyDeadlineError.
    */
   async notifyEmergency(transcript: string): Promise<IdempotentResponse> {
-    if (DEV_MOCK) {
+    if (IS_DEV_MOCK) {
       await mockDelay(800);
       return {
         idempotencyKey: 'mock-emergency-' + Date.now(),
@@ -232,7 +226,7 @@ export const apiService = {
    * 골든타임 룰: 60초 데드라인, 초과 시 NotifyDeadlineError.
    */
   async notifyShiftGroup(transcript: string): Promise<IdempotentResponse> {
-    if (DEV_MOCK) {
+    if (IS_DEV_MOCK) {
       await mockDelay(800);
       return {
         idempotencyKey:      'mock-shift-' + Date.now(),
@@ -261,7 +255,7 @@ export const apiService = {
   },
 
   async sendKakao(text: string): Promise<IdempotentResponse> {
-    if (DEV_MOCK) {
+    if (IS_DEV_MOCK) {
       await mockDelay(300);
       return { idempotencyKey: 'mock-kakao-' + Date.now(), success: true };
     }
@@ -295,7 +289,12 @@ export const apiService = {
     eventSource.onerror = (error) => {
       console.error('SSE Connection Error:', error);
       if (onError) onError(error);
-      eventSource.close();
+      // close() 호출 금지:
+      //   EventSource는 readyState=CONNECTING(0) 또는 OPEN(1) 상태에서
+      //   오류 발생 시 브라우저가 자동 재연결을 시도한다.
+      //   수동 close()는 readyState=CLOSED(2)로 전환 → 재연결 영구 차단.
+      //   명시적 연결 종료가 필요하면 호출자에서 반환된 EventSource 인스턴스에
+      //   직접 .close()를 호출할 것.
     };
 
     return eventSource;

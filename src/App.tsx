@@ -16,9 +16,10 @@ import type { ReportStatus, AckResponse, ReportResponse } from './services/hando
 import { getDeviceId } from './services/deviceId';
 
 // ── localStorage 키 ──────────────────────────────────────────────
-const LS_PENDING_ACK  = 'vg_pending_ack_report_id';
-const LS_WORKER_ID    = 'vg_worker_id';
-const LS_FACILITY_ID  = 'vg_facility_id';
+const LS_PENDING_ACK    = 'vg_pending_ack_report_id';
+const LS_WORKER_ID      = 'vg_worker_id';
+const LS_FACILITY_ID    = 'vg_facility_id';
+const LS_BENEFICIARY_ID = 'vg_beneficiary_id';
 
 // ── 타입 ─────────────────────────────────────────────────────────
 type Screen = 'HOME' | 'RECORDING' | 'REVIEW' | 'COMPLETING' | 'HANDOVER' | 'HANDOVER_VIEW';
@@ -194,9 +195,10 @@ export default function App() {
         await apiService.saveLog(recordedText);
       } else if (mode === 'HANDOVER_RECORD') {
         await postHandoverRecord({
-          text: recordedText,
-          worker_id:   localStorage.getItem(LS_WORKER_ID)   ?? 'WORKER_001',
-          facility_id: localStorage.getItem(LS_FACILITY_ID) ?? 'FACILITY_001',
+          raw_voice_text: recordedText,
+          worker_id:      localStorage.getItem(LS_WORKER_ID)      ?? 'WORKER_001',
+          facility_id:    localStorage.getItem(LS_FACILITY_ID)     ?? 'FACILITY_001',
+          beneficiary_id: localStorage.getItem(LS_BENEFICIARY_ID)  ?? 'UNKNOWN_BID',
         });
       } else if (mode === 'KAKAO_EMERGENCY') {
         try {

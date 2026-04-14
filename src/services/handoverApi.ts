@@ -11,11 +11,9 @@
  *   PATCH /api/v6/handover/{id}/ack       — 법적 수신 확인
  */
 
-const BASE       = import.meta.env.VITE_API_BASE_URL || '';
-// 🔒 Mock 강제 활성화 — 백엔드(Gemini/Notion) 물리적 단절 상태.
-// 실서비스 전환 시: const DEV_MOCK = !BASE; 로 복원.
-const DEV_MOCK   = true;
-const mockDelay  = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+import { API_BASE_URL as BASE, IS_DEV_MOCK as DEV_MOCK } from './config';
+
+const mockDelay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 // ── 응답 타입 ────────────────────────────────────────────────────
 
@@ -175,28 +173,32 @@ export async function ackHandover(
 }
 
 /**
- * POST /api/v2/ingest — 인수인계 기록하기
- * DEV_MOCK: 500ms 딜레이 후 void 반환.
+ * POST /api/v8/care-record
+ * 텍스트 발화 기반 케어 기록 적재.
+ * 의미론적으로 올바른 엔드포인트: audio ingest(/v2/ingest)가 아닌
+ * 텍스트 케어 기록 전용 API 사용.
  */
 export async function postHandoverRecord(params: {
-  text: string;
-  worker_id: string;
-  facility_id: string;
+  raw_voice_text: string;
+  worker_id:      string;   // caregiver_id로 백엔드 전달
+  facility_id:    string;
+  beneficiary_id: string;   // 필수 — App.tsx에서 localStorage 조회
 }): Promise<void> {
   if (DEV_MOCK) {
     await mockDelay(500);
     return;
   }
-  const res = await fetch(`${BASE}/api/v2/ingest`, {
+  const res = await fetch(`${BASE}/api/v8/care-record`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      care_type:   'handover_record',
-      recorded_at: new Date().toISOString(),
-      ...params,
+      facility_id:    params.facility_id,
+      beneficiary_id: params.beneficiary_id,
+      caregiver_id:   params.worker_id,
+      raw_voice_text: params.raw_voice_text,
+      recorded_at:    new Date().toISOString(),
     }),
   });
-  if (!res.ok && !BASE) return;
   await throwIfNotOk(res);
 }
 
